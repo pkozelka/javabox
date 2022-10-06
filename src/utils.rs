@@ -19,7 +19,7 @@ pub fn find_containing_dir<'a>(dir: &'a Path, what: &str) -> Option<&'a Path> {
 
 /// Runs the specified tool from project directory with working directory changed to specified module
 pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Result<()> {
-    println!("Running {tool} for project {} in module {}", project.display(), module.display());
+    log::info!("Running {tool} for project {} in module {}", project.display(), module.display());
     let mut command = std::process::Command::new(project.join(tool));
     command.current_dir(module);
     command.args(std::env::args().skip(1));
@@ -30,7 +30,7 @@ pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Resul
         None => Ok(()),
         Some(0) => Ok(()),
         Some(code) => {
-            eprintln!("Process returned code {code}");
+            log::error!("Process returned code {code}");
             Err(std::io::Error::new(ErrorKind::Other, format!("error: {code}")))
         }
     }
@@ -50,7 +50,7 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
         }
         match line.find('=') {
             None => {
-                eprintln!("ERROR: Bad line: {line}");
+                log::warn!("ERROR: Bad line: {line}");
             }
             Some(n) => {
                 let key = &line[0..n];
@@ -64,7 +64,7 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
 
 /// Downloads a file from given URL.
 pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
-    eprintln!("Downloading {} from {}", path.display(), url.as_str());
+    log::info!("Downloading {} from {}", path.display(), url.as_str());
     let request = ureq::get(url.as_str());
     let response = request.call()
         .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Problem with request: {url} :: {e:?}")))?;

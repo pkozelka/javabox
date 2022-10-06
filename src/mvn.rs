@@ -26,14 +26,14 @@ pub fn run_mvn() -> std::io::Result<()> {
             // ... and also _within_ wrapper, if one exists
             if wrapper.is_none() && d.join("pom.xml").is_file() {
                 modules.push(d);
-                eprintln!("POM: {}", d.display());
+                log::trace!("POM: {}", d.display());
             }
             if d.join("mvnw").is_file()
                 || d.join("mvnw.bat").is_file()
                 || d.join(".mvn").is_dir()
             {
                 wrapper = Some(d);
-                eprintln!("WRAPPER: {}", d.display());
+                log::trace!("WRAPPER: {}", d.display());
                 let props = d.join(".mvn/wrapper/maven-wrapper.properties");
                 if props.is_file() {
                     wrapper_properties = Some(utils::read_properties(&props)?);
@@ -45,7 +45,7 @@ pub fn run_mvn() -> std::io::Result<()> {
             || d.join(".svn").is_dir()
         {
             scm_repo_root = Some(d);
-            eprintln!("SCM WORKING COPY: {}", d.display());
+            log::trace!("SCM WORKING COPY: {}", d.display());
         }
 
         //TODO: think about seeking
@@ -69,7 +69,7 @@ pub fn run_mvn() -> std::io::Result<()> {
         }
     };
     let maven_home = get_maven_home(&user_home, &distribution_url)?;
-    eprintln!("MAVEN_HOME will be {}", maven_home.display());
+    log::debug!("Maven home: {}", maven_home.display());
     let launcher = maven_home.join("bin/mvn");
 
     // TODO: estimate JDK version and use it as JAVA_HOME and in PATH
@@ -83,7 +83,7 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
 
     match upath.rfind('/') {
         None => {
-            eprintln!("Strange distribution URL: {distribution_url}");
+            log::warn!("Strange distribution URL: {distribution_url}");
             Err(std::io::Error::new(ErrorKind::Other, format!("Strange distribution URL: {distribution_url}")))
         }
         Some(n) => {
@@ -92,13 +92,11 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
             let dist_name = base_name.replace("-bin", "");
             let url_hash = java_hash::java_uri_hash(&distribution_url);
             let maven_base = user_home.join(format!(".m2/wrapper/dists/{base_name}/{url_hash:x}"));
-            eprintln!("MAVEN_BASE will be {}", maven_base.display());
             let maven_home = maven_base.join(dist_name);
             if ! maven_home.is_dir() {
                 let zip_path = maven_base.join(zip_name);
                 // if the zip is missing, download it first (verify checksums!)
                 if !zip_path.is_file() {
-                    eprintln!("zip location will be {}", zip_path.display());
                     std::fs::create_dir_all(maven_base)?;
                     download(&distribution_url, &zip_path)?;
                 }
@@ -122,7 +120,7 @@ fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
     let meta: Metadata = serde_xml_rs::from_reader(meta)
         .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
     let version = &meta.versioning.latest;
-    eprintln!("LATEST MAVEN VERSION IS: {}", version);
+    log::debug!("Latest Maven release: {}", version);
     Ok(format!("https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/{version}/apache-maven-{version}-bin.zip"))
 }
 

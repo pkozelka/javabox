@@ -1,10 +1,17 @@
 use std::env;
+use log::LevelFilter;
 
 
 fn main() {
-    // Continued program logic goes here...
+    pretty_env_logger::formatted_timed_builder()
+        .format_timestamp_millis()
+        .filter_level(LevelFilter::Trace)
+        .filter_module("serde_xml_rs", LevelFilter::Info)
+        .filter_module("rustls", LevelFilter::Info)
+        .filter_module("zip_extract", LevelFilter::Debug)
+        .init();
+
     let exe = env::args().next().unwrap();
-    // println!("first arg is '{exe}'");
     let exe = match exe.rfind(std::path::MAIN_SEPARATOR) {
         None => exe.as_str(),
         Some(n) => &exe[n+1..]
