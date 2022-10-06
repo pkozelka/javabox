@@ -11,9 +11,9 @@ pub fn run_gradle() -> std::io::Result<()> {
     // (download and) select desired java version
     // run gradle in nearest directory
     let current = current_dir()?;
-    let module_dir = utils::find_containing_dir(&current, "build.gradle")?;
+    let module_dir = utils::find_containing_dir(&current, "build.gradle");
     let module_dir = module_dir.expect("No gradle module found above current directory");
-    let project_dir = utils::find_containing_dir(&module_dir, "gradlew")?;
+    let project_dir = utils::find_containing_dir(&module_dir, "gradlew");
     let project_dir = project_dir.expect("No gradle project found above module directory");
     utils::execute_tool(&project_dir, "gradlew", &module_dir)
 }

@@ -1,17 +1,17 @@
 use std::io::ErrorKind;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::Stdio;
 
 /// Seeks file `what` in current directory and all its parents
-pub fn find_containing_dir(dir: &Path, what: &str) -> std::io::Result<Option<PathBuf>> {
+pub fn find_containing_dir<'a>(dir: &'a Path, what: &str) -> Option<&'a Path> {
     let mut dir = dir;
     while !dir.join(what).exists() {
         dir = match dir.parent() {
-            None => { return Ok(None); }
+            None => { return None; }
             Some(dir) => dir
         };
     }
-    Ok(Some(dir.to_path_buf()))
+    Some(dir)
 }
 
 /// Runs the specified tool from project directory with working directory changed to specified module
