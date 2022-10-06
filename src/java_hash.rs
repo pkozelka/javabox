@@ -8,7 +8,6 @@ pub fn java_string_hash(text: &str) -> i32 {
 }
 
 pub fn java_uri_hash(uri: &url::Url) -> i32 {
-    eprintln!("uri : {uri:?}");
     let opaque = match uri.scheme() {
         "mailto" | "news" | "urn" => true,
         _ => false

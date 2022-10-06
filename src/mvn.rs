@@ -65,7 +65,7 @@ pub fn run_mvn() -> std::io::Result<()> {
         }
         None => {
             // default=latest if not configured otherwise
-            find_latest_maven_distribution(&user_home)
+            find_latest_maven_distribution(&user_home)?
         }
     };
     let maven_home = get_maven_home(&user_home, &distribution_url)?;
@@ -111,10 +111,35 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
     }
 }
 
-fn find_latest_maven_distribution(_user_home: &Path) -> String {
-    //TODO:
-    // - (re)download https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml ... keep cached for 1 week
-    // - extract value `metadata/versioning/latest` and use it to compose distro url
-    let version = "3.8.6";
-    format!("https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/{version}/apache-maven-{version}-bin.zip")
+fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
+    let meta = user_home.join(".m2/wrapper/dists/maven_metadata_xml");
+    let url = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
+    let url = Url::from_str(url)
+        .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Failed to download maven-matadata.xml: {} :: {e:?}", url)))?;
+    //TODO: keep cached for 1 week
+    download(&url, &meta)?;
+    let meta = std::fs::File::open(&meta)?;
+    let meta: Metadata = serde_xml_rs::from_reader(meta)
+        .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
+    let version = &meta.versioning.latest;
+    eprintln!("LATEST MAVEN VERSION IS: {}", version);
+    Ok(format!("https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/{version}/apache-maven-{version}-bin.zip"))
+}
+
+use serde_derive::Deserialize;
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename = "metadata")]
+#[serde(rename_all = "camelCase")]
+struct Metadata {
+    group_id: String,
+    artifact_id: String,
+    versioning: MvnVersioning
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct MvnVersioning {
+    latest: String,
+    release: String,
+    // versions: Vec<String>
 }

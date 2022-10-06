@@ -74,12 +74,10 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
     let r = response.into_reader();
     let mut br = BufReader::new(r);
     let mut buf = [0;8192];
-    eprintln!("Opening {}", path.display());
     let mut wr = File::options()
         .create(true)
         .write(true)
         .open(path)?;
-    eprintln!("Opened {}", path.display());
     loop {
         let sz = br.read(&mut buf)?;
         if sz == 0 {

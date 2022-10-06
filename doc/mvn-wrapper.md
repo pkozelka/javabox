@@ -57,13 +57,13 @@ Sample content:
 Can be used to:
 - estimate Java major version
   - `/project/properties/{source,target}`
-  - `/project/build/plugins[artifactId='maven-compiler-plugin']/configuration/{source,target,compilerVersion}`
+  - `/project/build/plugins[artifact_id='maven-compiler-plugin']/configuration/{source,target,compilerVersion}`
 - determine modules and their structure, including project top
   - `/project/parent/relativePath`
   - `/project/modules/module`
 - module identification
-  - `/project/{groupId,artifactId,version}`
-  - `/project/parent/{groupId,artifactId,version}`
+  - `/project/{group_id,artifact_id,version}`
+  - `/project/parent/{group_id,artifact_id,version}`
 - type of primary output artifact
   - `/project/packaging`
 - name of primary output artifact
