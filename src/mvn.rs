@@ -9,6 +9,7 @@ use dir::home_dir;
 use url::Url;
 
 use crate::{java_hash, utils};
+use crate::utils::download;
 
 pub fn run_mvn() -> std::io::Result<()> {
     let current = current_dir()?;
@@ -95,10 +96,15 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
             let maven_home = maven_base.join(dist_name);
             if ! maven_home.is_dir() {
                 let zip_path = maven_base.join(zip_name);
-                eprintln!("zip location will be {}", zip_path.display());
-                //TODO:
-                // - if the zip is missing, download it first (verify checksums!)
-                // - unpack the zip
+                // if the zip is missing, download it first (verify checksums!)
+                if !zip_path.is_file() {
+                    eprintln!("zip location will be {}", zip_path.display());
+                    std::fs::create_dir_all(maven_base)?;
+                    download(&distribution_url, &zip_path)?;
+                }
+                let zip = std::fs::File::open(&zip_path)?;
+                zip_extract::extract(zip, &maven_home, true)
+                    .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Failed to extract file: {} :: {e:?}", zip_path.display())))?;
             }
             Ok(maven_home)
         }

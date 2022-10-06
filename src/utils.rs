@@ -1,7 +1,9 @@
 use std::collections::HashMap;
-use std::io::ErrorKind;
+use std::fs::File;
+use std::io::{BufReader, Error, ErrorKind, Read, Write};
 use std::path::Path;
 use std::process::Stdio;
+use url::Url;
 
 /// Seeks file `what` in current directory and all its parents
 pub fn find_containing_dir<'a>(dir: &'a Path, what: &str) -> Option<&'a Path> {
@@ -58,4 +60,35 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
         }
     }
     Ok(properties)
+}
+
+/// Downloads a file from given URL.
+pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
+    eprintln!("Downloading {} from {}", path.display(), url.as_str());
+    let request = ureq::get(url.as_str());
+    let response = request.call()
+        .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Problem with request: {url} :: {e:?}")))?;
+    if response.status() != 200 {
+        return Err(Error::new(ErrorKind::Other, format!("HTTP Status {}:{} on {}", response.status(), response.status_text(), response.get_url())));
+    }
+    let r = response.into_reader();
+    let mut br = BufReader::new(r);
+    let mut buf = [0;8192];
+    eprintln!("Opening {}", path.display());
+    let mut wr = File::options()
+        .create(true)
+        .write(true)
+        .open(path)?;
+    eprintln!("Opened {}", path.display());
+    loop {
+        let sz = br.read(&mut buf)?;
+        if sz == 0 {
+            wr.flush()?;
+            break;
+        }
+        //TODO: add indicatif!
+        wr.write(&buf[0..sz])?;
+    }
+    //TODO: verify checksum
+    Ok(())
 }
