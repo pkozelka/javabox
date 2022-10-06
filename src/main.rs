@@ -24,3 +24,4 @@ mod mvn;
 mod gradle;
 mod javabox;
 mod utils;
+mod java_hash;

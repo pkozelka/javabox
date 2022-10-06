@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::process::Stdio;
@@ -31,4 +32,30 @@ pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Resul
             Err(std::io::Error::new(ErrorKind::Other, format!("error: {code}")))
         }
     }
+}
+
+/// Read property file into a HashMap.
+/// Empty lines and comments are ignored.
+/// Lines in form `KEY=VALUE` are read.
+/// Other lines are reported to stderr.
+pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> {
+    let text = std::fs::read_to_string(path)?;
+    let mut properties = HashMap::new();
+    for line in text.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue
+        }
+        match line.find('=') {
+            None => {
+                eprintln!("ERROR: Bad line: {line}");
+            }
+            Some(n) => {
+                let key = &line[0..n];
+                let value = &line[n+1..];
+                properties.insert(key.to_string(), value.to_string());
+            }
+        }
+    }
+    Ok(properties)
 }
