@@ -18,7 +18,7 @@ pub fn find_containing_dir<'a>(dir: &'a Path, what: &str) -> Option<&'a Path> {
 }
 
 /// Runs the specified tool from project directory with working directory changed to specified module
-pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Result<()> {
+pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Result<i32> {
     log::info!("Running {tool} for project {} in module {}", project.display(), module.display());
     let mut command = std::process::Command::new(project.join(tool));
     command.current_dir(module);
@@ -27,12 +27,8 @@ pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Resul
     command.stderr(Stdio::inherit());
     let status = command.status()?;
     match status.code() {
-        None => Ok(()),
-        Some(0) => Ok(()),
-        Some(code) => {
-            log::error!("Process returned code {code}");
-            Err(std::io::Error::new(ErrorKind::Other, format!("error: {code}")))
-        }
+        None => Err(std::io::Error::new(ErrorKind::BrokenPipe, "Interrupted")),
+        Some(code) => Ok(code)
     }
 }
 

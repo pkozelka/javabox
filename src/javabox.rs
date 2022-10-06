@@ -44,7 +44,7 @@ enum Commands {
     },
 }
 
-pub fn run_javabox() -> std::io::Result<()>{
+pub fn run_javabox() -> std::io::Result<i32>{
     let cli = Cli::parse();
 
     // You can check for the existence of subcommands, and if found use their
@@ -63,7 +63,7 @@ pub fn run_javabox() -> std::io::Result<()>{
             todo!("select")
         }
     }
-    Ok(())
+    Ok(0)
 }
 
 const ALIASES: [&str;5] = ["mvn", "mvnw", "gradle", "gradlew", "javabox"];
@@ -75,12 +75,12 @@ fn javabox_install(bin: Option<PathBuf>) -> std::io::Result<()>{
         Some(bin) => bin
     };
     let javabox = env::current_exe().unwrap();
-    eprintln!("Creating symlinks for {}", javabox.display());
+    log::info!("Creating symlinks for {}", javabox.display());
     for alias in ALIASES {
         let symlink = bin.join(alias);
-        eprintln!("* {}", symlink.display());
+        log::debug!("* {}", symlink.display());
         if symlink.exists() {
-            eprintln!("WARNING: ^ File already exists!");
+            log::warn!("WARNING: ^ File already exists!");
             continue;
         }
         symlink_file(&javabox, symlink)?;
@@ -95,12 +95,12 @@ fn javabox_uninstall(bin: Option<PathBuf>) -> std::io::Result<()>{
         Some(bin) => bin
     };
     let javabox = env::current_exe().unwrap();
-    eprintln!("Removing symlinks for {}", javabox.display());
+    log::info!("Removing symlinks for {}", javabox.display());
     for alias in ALIASES {
         let symlink = bin.join(alias);
-        eprintln!("* {}", symlink.display());
+        log::debug!("* {}", symlink.display());
         if !symlink.exists() {
-            eprintln!("WARNING: ^ File does not exist!");
+            log::warn!("WARNING: ^ File does not exist!");
             continue;
         }
         // TODO: somehow, check if it is "my" link, skip otherwise

@@ -11,9 +11,9 @@ use url::Url;
 use crate::{java_hash, utils};
 use crate::utils::download;
 
-pub fn run_mvn() -> std::io::Result<()> {
+pub fn run_mvn() -> std::io::Result<i32> {
     let current = current_dir()?;
-    let user_home = home_dir().unwrap();
+    let user_home = home_dir().expect("There is no HOME directory?!");
     // all ancestors containing pom.xml
     let mut modules = Vec::new();
     // top of the SCM repository

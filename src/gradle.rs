@@ -2,7 +2,7 @@ use std::env::current_dir;
 
 use crate::utils;
 
-pub fn run_gradle() -> std::io::Result<()> {
+pub fn run_gradle() -> std::io::Result<i32> {
     //TODO lookup top of the repository (.git/, .svn/, .gitignore, .svnignore etc)
     // lookup nearest build.gradle
     // lookup settings.gradle, gradle.properties, topmost build.gradle,

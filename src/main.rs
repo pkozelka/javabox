@@ -17,14 +17,18 @@ fn main() {
         Some(n) => &exe[n+1..]
     };
     // println!("executable name is '{exe}'");
-    match exe {
+    let exit_code = match exe {
         "mvnw" |
         "mvn" => mvn::run_mvn(),
         "gradlew" |
         "gradle" => gradle::run_gradle(),
         "javabox" => javabox::run_javabox(),
         _ => panic!("Unsupported alias name: {exe}")
-    }.unwrap()
+    }.unwrap();
+    if exit_code != 0 {
+        log::error!("Returning with exit code {exit_code}");
+        std::process::exit(exit_code);
+    }
 }
 
 mod mvn;
