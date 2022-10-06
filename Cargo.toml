@@ -10,3 +10,4 @@ clap = { version = "4.0.2", features = ["derive"] }
 log = "0.4.17"
 symlink = "0.1.0"
 dir = "0.1.2"
+url = "2.3.1"
