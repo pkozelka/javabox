@@ -66,7 +66,7 @@ pub fn run_javabox() -> std::io::Result<()>{
     Ok(())
 }
 
-const ALIASES: [&str;4] = ["mvn", "mvnw", "gradle", "gradlew"];
+const ALIASES: [&str;5] = ["mvn", "mvnw", "gradle", "gradlew", "javabox"];
 
 fn javabox_install(bin: Option<PathBuf>) -> std::io::Result<()>{
 

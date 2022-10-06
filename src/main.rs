@@ -15,11 +15,12 @@ fn main() {
         "mvn" => mvn::run_mvn(),
         "gradlew" |
         "gradle" => gradle::run_gradle(),
-        "javabox" => javabox::run_javabox().unwrap(),
+        "javabox" => javabox::run_javabox(),
         _ => panic!("Unsupported alias name: {exe}")
-    }
+    }.unwrap()
 }
 
 mod mvn;
 mod gradle;
 mod javabox;
+mod utils;
