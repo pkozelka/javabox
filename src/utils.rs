@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufReader, Error, ErrorKind, Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::str::FromStr;
+use std::time::{SystemTime, UNIX_EPOCH};
 use url::Url;
 
 /// Seeks file `what` in current directory and all its parents
@@ -42,7 +44,7 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
-            continue
+            continue;
         }
         match line.find('=') {
             None => {
@@ -50,7 +52,7 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
             }
             Some(n) => {
                 let key = &line[0..n];
-                let value = &line[n+1..];
+                let value = &line[n + 1..];
                 properties.insert(key.to_string(), value.to_string());
             }
         }
@@ -59,6 +61,7 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
 }
 
 /// Downloads a file from given URL.
+/// It is safe - the new file exists only if it was read successfully; download is pointed to a different file.
 pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
     log::info!("Downloading {} from {}", path.display(), url.as_str());
     let request = ureq::get(url.as_str());
@@ -67,13 +70,25 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
     if response.status() != 200 {
         return Err(Error::new(ErrorKind::Other, format!("HTTP Status {}:{} on {}", response.status(), response.status_text(), response.get_url())));
     }
-    let r = response.into_reader();
-    let mut br = BufReader::new(r);
-    let mut buf = [0;8192];
+    let mut tmp_path = path.display().to_string();
+    if path.exists() {
+        // for existing file, we use its current mtime as the tmp suffix
+        let stat = std::fs::metadata(path)?;
+        let time = stat.modified()
+            .or(stat.created())
+            .unwrap_or(SystemTime::now());
+        let time = time.duration_since(UNIX_EPOCH)?.as_secs();
+        tmp_path.push_str(&format!("{time}"));
+    } else {
+        tmp_path.push_str(".new");
+    }
+    let tmp_path = PathBuf::from_str(&tmp_path)?;
+    let mut br = BufReader::new(response.into_reader());
+    let mut buf = [0; 8192];
     let mut wr = File::options()
         .create(true)
         .write(true)
-        .open(path)?;
+        .open(&tmp_path)?;
     loop {
         let sz = br.read(&mut buf)?;
         if sz == 0 {
@@ -83,6 +98,8 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
         //TODO: add indicatif!
         wr.write(&buf[0..sz])?;
     }
-    //TODO: verify checksum
+    // TODO: verify checksum
+    // give it the proper name
+    std::fs::rename(tmp_path, path)?;
     Ok(())
 }
