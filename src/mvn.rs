@@ -4,13 +4,16 @@ use std::env::current_dir;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::time::{Duration, SystemTime};
+use std::time::Duration;
 
 use dir::home_dir;
 use url::Url;
 
 use crate::{java_hash, utils};
-use crate::utils::download;
+use crate::utils::{download, download_or_reuse};
+
+const APACHE_MAVEN_DIST_URL_BASE: &str     = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven";
+const APACHE_MAVEN_DIST_METADATA_URL: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
 
 pub fn run_mvn() -> std::io::Result<i32> {
     let current = current_dir()?;
@@ -49,9 +52,9 @@ pub fn run_mvn() -> std::io::Result<i32> {
             log::trace!("SCM WORKING COPY: {}", d.display());
         }
 
-        //TODO: think about seeking
-        // - .repository/ and .m2/repository/
-        // - settings.xml and .m2/settings.xml
+        //TODO: think about detecting
+        // - .repository/ and .m2/repository/ ... can be passed to maven with -Dmaven.repository.local=XXX
+        // - settings.xml and .m2/settings.xml ... can be passed to maven with --settings
         // - .m2/
     }
     let project_dir = *modules.last().expect("Not inside a maven module with pom.xml file found");
@@ -62,7 +65,11 @@ pub fn run_mvn() -> std::io::Result<i32> {
     // estimate maven version and use it
     let distribution_url = match wrapper_properties {
         Some(wrapper_properties) => {
-            wrapper_properties.get("distributionUrl").expect("cannot find key 'distributionUrl'").clone()
+            let url = wrapper_properties.get("distributionUrl").expect("cannot find key 'distributionUrl'").clone();
+            if !url.starts_with(APACHE_MAVEN_DIST_URL_BASE) {
+                log::warn!("Suspicious: this is now our known Apache Maven distribution location: {url}");
+            }
+            url
         }
         None => {
             // default=latest if not configured otherwise
@@ -111,41 +118,20 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
 }
 
 fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
-    let metadata_xml = user_home.join(".m2/wrapper/dists/maven_metadata_xml");
-    let url = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
+    let metadata_xml = user_home.join(".m2/wrapper/dists/maven-metadata.xml");
+    let url = APACHE_MAVEN_DIST_METADATA_URL;
     let url = Url::from_str(url)
         .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Failed to download maven-matadata.xml: {} :: {e:?}", url)))?;
     // reuse the file for some time, they don't release maven every hour
-    let mut needs_update = true;
-    if metadata_xml.exists() {
-        let maxage_secs = 3600 * 24; // one day should be good enough
-        let stat = std::fs::metadata(metadata_xml)?;
-        match stat.modified() {
-            Ok(time) => {
-                // if too fresh, avoid re-downloading
-                let age_secs = time.elapsed()
-                    .unwrap_or(Duration::from_secs(maxage_secs + 1))
-                    .as_secs();
-                needs_update = age_secs > maxage_secs;
-            }
-            Err(e) => {
-                log::warn!("Cannot read modification time of {}, maven-metadata.xml will be updated. Error is: {e:?}", metadata_xml.display());
-            }
-        }
-        // try to update, but don't die if you can't
-        if let Err(e) = download(&url, &metadata_xml) {
-            log::warn!("Failed to update maven-metadata.xml, let's assume that the latest version didn't change. Error is: {e:?}");
-        }
-    } else {
-        download(&url, &metadata_xml)?;
-    }
+    // one day should be good enough
+    download_or_reuse(&url, &metadata_xml, Duration::from_secs(3600 * 24))?;
     // extract the latest version
     let meta = std::fs::File::open(&metadata_xml)?;
     let meta: MavenMetadataXml = serde_xml_rs::from_reader(meta)
         .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
     let version = &meta.versioning.latest;
     log::debug!("Latest Maven release: {}", version);
-    Ok(format!("https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/{version}/apache-maven-{version}-bin.zip"))
+    Ok(format!("{APACHE_MAVEN_DIST_URL_BASE}/{version}/apache-maven-{version}-bin.zip"))
 }
 
 use serde_derive::Deserialize;

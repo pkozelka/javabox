@@ -3,8 +3,7 @@ use std::fs::File;
 use std::io::{BufReader, Error, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
-use std::str::FromStr;
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use url::Url;
 
 /// Seeks file `what` in current directory and all its parents
@@ -72,17 +71,20 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
     }
     let mut tmp_path = path.display().to_string();
     if path.exists() {
-        // for existing file, we use its current mtime as the tmp suffix
+        tmp_path.push_str(".upd");
+        // for existing file, we use its current mtime in the tmp suffix
         let stat = std::fs::metadata(path)?;
         let time = stat.modified()
             .or(stat.created())
             .unwrap_or(SystemTime::now());
-        let time = time.duration_since(UNIX_EPOCH)?.as_secs();
-        tmp_path.push_str(&format!("{time}"));
+        let time = time.duration_since(UNIX_EPOCH).unwrap_or(Duration::from_secs(0)).as_secs();
+        if time > 0 {
+            tmp_path.push_str(&format!(".{time}"));
+        }
     } else {
         tmp_path.push_str(".new");
     }
-    let tmp_path = PathBuf::from_str(&tmp_path)?;
+    let tmp_path = PathBuf::from(&tmp_path);
     let mut br = BufReader::new(response.into_reader());
     let mut buf = [0; 8192];
     let mut wr = File::options()
@@ -102,4 +104,41 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
     // give it the proper name
     std::fs::rename(tmp_path, path)?;
     Ok(())
+}
+
+/// Downloads a file only if it is older than provided age.
+/// The file is reused otherwise, and also if troubles occur during age check or download.
+/// Useful only when being totally up-to-date is not critical.
+pub fn download_or_reuse(url: &Url, path: &Path, max_age: Duration) -> std::io::Result<()> {
+    match std::fs::metadata(path) {
+        Ok(stat) => {
+            let mut needs_update = true;
+            match stat.modified().or(stat.created()) {
+                Ok(time) => {
+                    let max_age_secs = max_age.as_secs();
+                    // if too fresh, avoid updating
+                    let age_secs = time.elapsed()
+                        .unwrap_or(Duration::from_secs(max_age_secs + 1))
+                        .as_secs();
+                    needs_update = age_secs > max_age_secs;
+                }
+                Err(e) => {
+                    log::warn!("Cannot read modification time of '{}', file will be updated. Error is: {e:?}", path.display());
+                }
+            }
+            if needs_update {
+                // try to update, but don't die if you can't
+                if let Err(e) = download(&url, &path) {
+                    log::warn!("Failed to update file '{}', let's assume that the latest version didn't change. Error is: {e:?}", path.display());
+                }
+            }
+            Ok(())
+        }
+        Err(e) => {
+            if path.exists() {
+                log::warn!("Cannot read file information: '{}'. Error is: {e:?}", path.display())
+            }
+            download(&url, &path)
+        }
+    }
 }
