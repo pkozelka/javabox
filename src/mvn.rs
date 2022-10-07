@@ -4,6 +4,7 @@ use std::env::current_dir;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::time::{Duration, SystemTime};
 
 use dir::home_dir;
 use url::Url;
@@ -58,7 +59,7 @@ pub fn run_mvn() -> std::io::Result<i32> {
 
     // TODO: consider delegating to the existing wrapper, if it isn't myself
     // TODO: when on a nested module, we should perhaps go from project root and add options `-pl` with rel module and one of (`--also-make`, `--also-make-dependents`)
-    // TODO: estimate maven version and use it
+    // estimate maven version and use it
     let distribution_url = match wrapper_properties {
         Some(wrapper_properties) => {
             wrapper_properties.get("distributionUrl").expect("cannot find key 'distributionUrl'").clone()
@@ -93,7 +94,7 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
             let url_hash = java_hash::java_uri_hash(&distribution_url);
             let maven_base = user_home.join(format!(".m2/wrapper/dists/{base_name}/{url_hash:x}"));
             let maven_home = maven_base.join(dist_name);
-            if ! maven_home.is_dir() {
+            if !maven_home.is_dir() {
                 let zip_path = maven_base.join(zip_name);
                 // if the zip is missing, download it first (verify checksums!)
                 if !zip_path.is_file() {
@@ -110,14 +111,37 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
 }
 
 fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
-    let meta = user_home.join(".m2/wrapper/dists/maven_metadata_xml");
+    let metadata_xml = user_home.join(".m2/wrapper/dists/maven_metadata_xml");
     let url = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
     let url = Url::from_str(url)
         .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Failed to download maven-matadata.xml: {} :: {e:?}", url)))?;
-    //TODO: keep cached for 1 week
-    download(&url, &meta)?;
-    let meta = std::fs::File::open(&meta)?;
-    let meta: Metadata = serde_xml_rs::from_reader(meta)
+    // reuse the file for some time, they don't release maven every hour
+    let mut needs_update = true;
+    if metadata_xml.exists() {
+        let maxage_secs = 3600 * 24; // one day should be good enough
+        let stat = std::fs::metadata(metadata_xml)?;
+        match stat.modified() {
+            Ok(time) => {
+                // if too fresh, avoid re-downloading
+                let age_secs = time.elapsed()
+                    .unwrap_or(Duration::from_secs(maxage_secs + 1))
+                    .as_secs();
+                needs_update = age_secs > maxage_secs;
+            }
+            Err(e) => {
+                log::warn!("Cannot read modification time of {}, maven-metadata.xml will be updated. Error is: {e:?}", metadata_xml.display());
+            }
+        }
+        // try to update, but don't die if you can't
+        if let Err(e) = download(&url, &metadata_xml) {
+            log::warn!("Failed to update maven-metadata.xml, let's assume that the latest version didn't change. Error is: {e:?}");
+        }
+    } else {
+        download(&url, &metadata_xml)?;
+    }
+    // extract the latest version
+    let meta = std::fs::File::open(&metadata_xml)?;
+    let meta: MavenMetadataXml = serde_xml_rs::from_reader(meta)
         .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
     let version = &meta.versioning.latest;
     log::debug!("Latest Maven release: {}", version);
@@ -129,14 +153,14 @@ use serde_derive::Deserialize;
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename = "metadata")]
 #[serde(rename_all = "camelCase")]
-struct Metadata {
+struct MavenMetadataXml {
     group_id: String,
     artifact_id: String,
-    versioning: MvnVersioning
+    versioning: MetadataVersioning,
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
-struct MvnVersioning {
+struct MetadataVersioning {
     latest: String,
     release: String,
     // versions: Vec<String>
