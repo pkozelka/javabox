@@ -16,7 +16,7 @@ const APACHE_MAVEN_DIST_URL_BASE: &str     = "https://repo.maven.apache.org/mave
 const APACHE_MAVEN_DIST_METADATA_URL: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
 
 pub fn run_mvn() -> std::io::Result<i32> {
-    let current = current_dir()?;
+    let current_dir = current_dir()?;
     let user_home = home_dir().expect("There is no HOME directory?!");
     // all ancestors containing pom.xml
     let mut modules = Vec::new();
@@ -24,7 +24,7 @@ pub fn run_mvn() -> std::io::Result<i32> {
     let mut scm_repo_root = None;
     let mut wrapper = None;
     let mut wrapper_properties = None;
-    for d in current.ancestors() {
+    for d in current_dir.ancestors() {
         if scm_repo_root.is_none() {
             // we only care about these files _within_ scm repo, if one exists
             // ... and also _within_ wrapper, if one exists
@@ -57,8 +57,6 @@ pub fn run_mvn() -> std::io::Result<i32> {
         // - settings.xml and .m2/settings.xml ... can be passed to maven with --settings
         // - .m2/
     }
-    let project_dir = *modules.last().expect("Not inside a maven module with pom.xml file found");
-    let module_dir = modules[0];
 
     // TODO: consider delegating to the existing wrapper, if it isn't myself
     // TODO: when on a nested module, we should perhaps go from project root and add options `-pl` with rel module and one of (`--also-make`, `--also-make-dependents`)
@@ -81,6 +79,11 @@ pub fn run_mvn() -> std::io::Result<i32> {
     let launcher = maven_home.join("bin/mvn");
 
     // TODO: estimate JDK version and use it as JAVA_HOME and in PATH
+
+    let current_dir = current_dir.as_path();
+    let project_dir = *modules.last().unwrap_or(&current_dir);
+    let module_dir = *modules.first().unwrap_or(&current_dir);
+
     utils::execute_tool(&project_dir, &launcher.display().to_string(), &module_dir)
 }
 
