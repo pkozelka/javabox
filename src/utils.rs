@@ -37,9 +37,8 @@ pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Resul
 /// Empty lines and comments are ignored.
 /// Lines in form `KEY=VALUE` are read.
 /// Other lines are reported to stderr.
-pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> {
+pub fn read_properties(properties: &mut HashMap<String,String>, path: &Path) -> std::io::Result<()> {
     let text = std::fs::read_to_string(path)?;
-    let mut properties = HashMap::new();
     for line in text.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
@@ -56,7 +55,7 @@ pub fn read_properties(path: &Path) -> std::io::Result<HashMap<String, String>> 
             }
         }
     }
-    Ok(properties)
+    Ok(())
 }
 
 /// Downloads a file from given URL.
