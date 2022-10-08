@@ -6,18 +6,6 @@ use std::process::Stdio;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use url::Url;
 
-/// Seeks file `what` in current directory and all its parents
-pub fn find_containing_dir<'a>(dir: &'a Path, what: &str) -> Option<&'a Path> {
-    let mut dir = dir;
-    while !dir.join(what).exists() {
-        dir = match dir.parent() {
-            None => { return None; }
-            Some(dir) => dir
-        };
-    }
-    Some(dir)
-}
-
 /// Runs the specified tool from project directory with working directory changed to specified module
 pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Result<i32> {
     log::info!("Running {tool} for project {} in module {}", project.display(), module.display());
@@ -50,7 +38,7 @@ pub fn read_properties(properties: &mut HashMap<String,String>, path: &Path) -> 
             }
             Some(n) => {
                 let key = &line[0..n];
-                let value = &line[n + 1..];
+                let value = &line[n + 1..].replace("\\:", ":");
                 properties.insert(key.to_string(), value.to_string());
             }
         }
