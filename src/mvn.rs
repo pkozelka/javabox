@@ -45,9 +45,7 @@ pub fn run_mvn() -> std::io::Result<i32> {
             }
             //
         }
-        if d.join(".git/config").is_file()
-            || d.join(".svn").is_dir()
-        {
+        if utils::is_scm_wc_root(d) {
             scm_repo_root = Some(d);
             log::trace!("SCM WORKING COPY: {}", d.display());
         }

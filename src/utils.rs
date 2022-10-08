@@ -142,3 +142,14 @@ pub fn download_or_reuse(url: &Url, path: &Path, max_age: Duration) -> std::io::
         }
     }
 }
+
+/// Decides if provided directory is the root of SCM working copy, by examining the presence of metadata.
+/// Returns:
+/// - true if it _surely is_
+/// - `false` if it _surely is not_
+/// There is currently no way to indicate 'not sure'.
+pub fn is_scm_wc_root(d: &Path) -> bool {
+    d.join(".git/config").is_file()
+        || d.join(".svn").is_dir()
+        || d.join(".hg").is_dir()
+}
