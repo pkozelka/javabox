@@ -101,9 +101,10 @@ fn get_gradle_home(user_home: &Path, distribution_url: &String) -> std::io::Resu
         }
         Some(n) => {
             let zip_name = &upath[n + 1..];
-            let dist_name = zip_name.replace(".zip", "");
+            let base_name = zip_name.replace(".zip", "");
+            let dist_name = base_name.replace("-bin", "");
             let url_hash = utils::md5decimal(distribution_url.as_str());
-            let gradle_base = user_home.join(format!(".gradle/wrapper/dists/{dist_name}/{url_hash}"));
+            let gradle_base = user_home.join(format!(".gradle/wrapper/dists/{base_name}/{url_hash}"));
             let gradle_home = gradle_base.join(dist_name);
             if !gradle_home.is_dir() {
                 let zip_path = gradle_base.join(zip_name);
