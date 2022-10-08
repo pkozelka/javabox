@@ -4,6 +4,9 @@ use std::io::{BufReader, Error, ErrorKind, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+use crypto::digest::Digest;
+use crypto::md5::Md5;
 use url::Url;
 
 /// Runs the specified tool from project directory with working directory changed to specified module
@@ -139,4 +142,26 @@ pub fn is_scm_wc_root(d: &Path) -> bool {
     d.join(".git/config").is_file()
         || d.join(".svn").is_dir()
         || d.join(".hg").is_dir()
+}
+
+/// This is used in Gradle Wrapper for distributionUrl hashing.
+/// See https://github.com/gradle/gradle/blob/master/subprojects/wrapper-shared/src/main/java/org/gradle/wrapper/PathAssembler.java#L62-L71
+///
+pub fn md5decimal(s: &str) -> String {
+    let mut hasher = Md5::new();
+    hasher.input(s.as_bytes());
+    let mut output = [0; 16]; // An MD5 is 16 bytes
+    hasher.result(&mut output);
+    let dec = bigdecimal::num_bigint::BigUint::from_bytes_be(&output);
+    dec.to_str_radix(36)
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::utils::md5decimal;
+
+    #[test]
+    fn test_md5radix36() {
+        assert_eq!("260hg96vuh6ex27h9vo47iv4d", md5decimal("https://services.gradle.org/distributions/gradle-7.2-all.zip"))
+    }
 }

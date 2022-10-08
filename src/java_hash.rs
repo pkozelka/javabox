@@ -93,7 +93,7 @@ mod tests {
     #[test]
     fn test_mvn_hasher() {
         let url = Url::from_str("https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.8.6/apache-maven-3.8.6-bin.zip").unwrap();
-        let h = java_uri_hash(url);
+        let h = java_uri_hash(&url);
         println!("{}", h);
         println!("{:x}", h);
         assert_eq!(1733723188, h);
@@ -110,8 +110,8 @@ mod tests {
 
     #[test]
     fn test_seznam_hasher() {
-        assert_eq!(-1242908590, java_uri_hash(Url::from_str("https://seznam.cz/").unwrap()));
-        assert_eq!(-150014690, java_uri_hash(Url::from_str("https://seznam.cz/Hello").unwrap()));
+        assert_eq!(-1242908590, java_uri_hash(&Url::from_str("https://seznam.cz/").unwrap()));
+        assert_eq!(-150014690, java_uri_hash(&Url::from_str("https://seznam.cz/Hello").unwrap()));
         // assert_eq!(-596708447, java_uri_hash(Url::from_str("https://seznam.cz").unwrap())); //bug: url::Url cannot represent empty path
     }
 }

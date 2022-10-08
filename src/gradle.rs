@@ -8,8 +8,8 @@ use std::time::Duration;
 use dir::home_dir;
 use serde_derive::Deserialize;
 use url::Url;
+use crate::utils;
 
-use crate::{java_hash, utils};
 use crate::utils::{download, download_or_reuse};
 
 const GRADLE_DIST_URL_BASE: &str     = "https://services.gradle.org/distributions"; // + '"/gradle-6.5-all.zip"
@@ -102,8 +102,8 @@ fn get_gradle_home(user_home: &Path, distribution_url: &String) -> std::io::Resu
         Some(n) => {
             let zip_name = &upath[n + 1..];
             let dist_name = zip_name.replace(".zip", "");
-            let url_hash = java_hash::java_uri_hash(&distribution_url);
-            let gradle_base = user_home.join(format!(".gradle/wrapper/dists/{dist_name}/{url_hash:x}"));
+            let url_hash = utils::md5decimal(distribution_url.as_str());
+            let gradle_base = user_home.join(format!(".gradle/wrapper/dists/{dist_name}/{url_hash}"));
             let gradle_home = gradle_base.join(dist_name);
             if !gradle_home.is_dir() {
                 let zip_path = gradle_base.join(zip_name);
