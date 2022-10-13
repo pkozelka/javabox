@@ -7,6 +7,8 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use crypto::digest::Digest;
 use crypto::md5::Md5;
+use indicatif::{ProgressBar, ProgressStyle};
+use ureq::Response;
 use url::Url;
 
 /// Runs the specified tool from project directory with working directory changed to specified module
@@ -49,6 +51,14 @@ pub fn read_properties(properties: &mut HashMap<String,String>, path: &Path) -> 
     Ok(())
 }
 
+/// ureq doesn't have this
+fn get_content_length(response: &Response) -> Option<u64> {
+    match response.header("content-length") {
+        None => None,
+        Some(sz) => sz.parse::<u64>().ok()
+    }
+}
+
 /// Downloads a file from given URL.
 /// It is safe - the new file exists only if it was read successfully; download is pointed to a different file.
 pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
@@ -59,6 +69,8 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
     if response.status() != 200 {
         return Err(Error::new(ErrorKind::Other, format!("HTTP Status {}:{} on {}", response.status(), response.status_text(), response.get_url())));
     }
+    let total_size = get_content_length(&response).ok_or(std::io::Error::new(ErrorKind::Other, "Cannot get content length"))?;
+
     let mut tmp_path = path.display().to_string();
     if path.exists() {
         tmp_path.push_str(".upd");
@@ -75,21 +87,31 @@ pub fn download(url: &Url, path: &Path) -> std::io::Result<()> {
         tmp_path.push_str(".new");
     }
     let tmp_path = PathBuf::from(&tmp_path);
+    std::fs::create_dir_all(tmp_path.parent().unwrap())?;
     let mut br = BufReader::new(response.into_reader());
     let mut buf = [0; 8192];
     let mut wr = File::options()
         .create(true)
         .write(true)
         .open(&tmp_path)?;
+    let pb = ProgressBar::new(total_size);
+    pb.set_style(ProgressStyle::default_bar()
+        .template("{msg}\n[{wide_bar:.cyan/blue}] {bytes}/{total_bytes} [{elapsed_precise}] ({bytes_per_sec}, {eta})")
+        .map_err(|e| std::io::Error::new(ErrorKind::Other, format!("ERROR: {e:?}")))?
+        .progress_chars("#>-"));
+    pb.set_message(format!("Downloading {}", path.file_name().unwrap().to_str().unwrap()));
+    let mut downloaded = 0;
     loop {
         let sz = br.read(&mut buf)?;
+        downloaded += sz;
+        pb.set_position(downloaded as u64);
         if sz == 0 {
             wr.flush()?;
             break;
         }
-        //TODO: add indicatif!
         wr.write(&buf[0..sz])?;
     }
+    pb.finish_and_clear();
     // TODO: verify checksum
     // give it the proper name
     std::fs::rename(tmp_path, path)?;
