@@ -4,7 +4,7 @@ use clap::{Parser, Subcommand};
 use symlink::{remove_symlink_file, symlink_file};
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None,bin_name="javabox")]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

@@ -22,6 +22,7 @@ fn main() {
         "mvn" => mvn::run_mvn(),
         "gradlew" |
         "gradle" => gradle::run_gradle(),
+        "javabox.exe" |
         "javabox" => javabox::run_javabox(),
         _ => panic!("Unsupported alias name: {exe}")
     }.unwrap();
