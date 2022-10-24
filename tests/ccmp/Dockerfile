@@ -19,9 +19,13 @@ RUN git clone --depth=2 https://github.com/pkozelka/contentcheck-maven-plugin.gi
 RUN mkdir -p /root/.m2/repository
 #VOLUME /home/builder/.m2/repository
 
+#TODO move this up^^^
+RUN apt install -y curl
 
-RUN mkdir -p /root/.m2/wrapper/dists .m2/repository
+RUN mkdir -p /root/.m2/wrapper/dists .m2/repository /root/bin
 RUN ln -s /root/Downloads/cache/apache-maven-3.8.6-bin /root/.m2/wrapper/dists/apache-maven-3.8.6-bin
 RUN alias l='ls -la'
 
 WORKDIR /root/code
+
+RUN export PATH=/root/bin:$PATH

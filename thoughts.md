@@ -125,6 +125,7 @@ User wants to build a project
 - runs `javabox init --scm=git:https://x.y.z/a/b/c --under=bindings/java .`
   - `--scm` is the scm url, starts with the scm type prefix (`git`, `svn`, ... see how Maven defines this)
   - `--under` is optional, indicates that the project resides somewhere else than on the root
+    - _do we really need this?_
   - the last param is target dir (here dot), indicates the desire to install it here (must be empty) or indicated dir (must be empty or missing) rather than in auto-determined directory (the default)
 
 ### ??phased approach
