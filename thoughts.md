@@ -16,7 +16,7 @@ CLAP: see multicall example: https://github.com/clap-rs/clap/blob/master/example
       url.txt
       <symlink to installation dir>
   ```
-  
+
 ## Installation dir
 
 ?? Candidates:
@@ -87,12 +87,13 @@ mvn @@jdk=19:: @@mvn=3.2.1:: clean build
 
 ## Usage scenarios
 
-These scenarios will be presented in file `BUILD.md` so that the user can see it on 
+These scenarios will be presented in file `BUILD.md` so that the user can see it on
 web repo.
 Part of that file may also serve as a wrapper configuration.
 
 User wants to build a project
-(WX) ... from web repo, and has completely empty box
+
+(WX) ... **from web repo, and has completely empty box**
 - ?? user must install git/svn/hg/* himself ??
 - runs command suggested from readme; kind of `curl something.url?github=x/y | sh"`
   - if not present, javabox is downloaded and installed
@@ -108,7 +109,7 @@ User wants to build a project
     - initial build or preload is performed
     - little timing and action report is presented on console
 
-(DX) ... that resides on disk, but he has no javabox yet
+(DX) ... **that resides on disk, but he has no javabox yet**
 - runs `./mvnw clean build`
   - if not present, javabox is downloaded and installed
       - javabox setup is executed: symlinks, default configs etc
@@ -117,12 +118,14 @@ User wants to build a project
       - wrapper properties are examined
       - ... etc.
 
-(DJ) ... that resides on disk, and already has javabox
+(DJ) ... **that resides on disk, and already has javabox**
 - runs `mvn clean install`
 
-(WJ) ... from web repo and has javabox installed
-- runs `javabox init --url=https://x.y.z/a/b/c .`
-  - the dot indicates the desire to install it here (must be empty) or indicated dir (must be empty or missing) rather than in auto-determined directory (the default)
+(WJ) ... **from web repo and has javabox installed**
+- runs `javabox init --scm=git:https://x.y.z/a/b/c --under=bindings/java .`
+  - `--scm` is the scm url, starts with the scm type prefix (`git`, `svn`, ... see how Maven defines this)
+  - `--under` is optional, indicates that the project resides somewhere else than on the root
+  - the last param is target dir (here dot), indicates the desire to install it here (must be empty) or indicated dir (must be empty or missing) rather than in auto-determined directory (the default)
 
 ### ??phased approach
 
