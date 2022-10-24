@@ -69,7 +69,9 @@ pub fn run_mvn() -> std::io::Result<i32> {
             if props.exists() {
                 utils::read_properties(&mut wrapper_properties, &props)?;
             }
-            let url = wrapper_properties.get("distributionUrl").expect("cannot find key 'distributionUrl'").clone();
+            let url = wrapper_properties.get("distributionUrl")
+                .expect("cannot find key 'distributionUrl'") //TODO: here is the place to use default - we don't have properties, but we do have mvnw
+                .clone();
             if !url.starts_with(APACHE_MAVEN_DIST_URL_BASE) {
                 log::warn!("Suspicious: this is not our known Apache Maven distribution location: {url}");
                 // if we ever implement a paranoid mode, this could be a reason to stop

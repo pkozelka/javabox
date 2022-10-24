@@ -1,12 +1,18 @@
 #!/bin/bash
 
 # check if javabox exists and is on the PATH
-JAVABOX_VER=$(javabox --version)
+JAVABOX_VER=$(command javabox --version 2>/dev/null)
 if test -z "$JAVABOX_VER"; then
   JAVABOX_BIN_URL="https://dist.origis.info/javabox/shapshot/javabox"
   JAVABOX_BIN="/tmp/javabox"
   # use `curl` or `wget` to download the wrapper
-  if command -v wget > /dev/null; then
+  if test -x $JAVABOX_BIN; then
+    echo "Reusing previous download"
+  elif test -x ; then
+    JAVABOX_BIN=~/root/bin/javabox
+    echo "WARNING: Using $JAVABOX_BIN directly - it should already be on PATH but isn't"
+    #TODO: make sure that javabox setup doesn't try copy to itself
+  elif command -v wget > /dev/null; then
     echo "Using wget"
     wget "$JAVABOX_BIN_URL" -O "$JAVABOX_BIN" || exit 1
   elif command -v curl > /dev/null; then
@@ -20,7 +26,7 @@ if test -z "$JAVABOX_VER"; then
   # - moves itself to a target dir
   # - creates symlinks (somewhere?) on PATH
   chmod +x $JAVABOX_BIN
-  $JAVABOX_BIN install
+  $JAVABOX_BIN install || exit 1
   cat >>~/.bashrc << \EOF
 export PATH=$HOME/bin:$PATH
 echo "PATH: $PATH"
@@ -28,6 +34,7 @@ EOF
   source ~/.bashrc
   export PATH=$HOME/bin:$PATH
   echo "PATH now: $PATH"
+  echo "type 'source ~/.bashrc' to make sure your shell has all needed"
 fi
 
 exec mvn "$@"
