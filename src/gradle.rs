@@ -12,7 +12,8 @@ use crate::utils;
 
 use crate::utils::{download, download_or_reuse};
 
-const GRADLE_DIST_URL_BASE: &str     = "https://services.gradle.org/distributions"; // + '"/gradle-6.5-all.zip"
+const GRADLE_DIST_URL_BASE: &str = "https://services.gradle.org/distributions";
+// + '"/gradle-6.5-all.zip"
 const GRADLE_DIST_CURRENT_VERSION: &str = "https://services.gradle.org/versions/current"; // JSON
 
 pub fn run_gradle() -> std::io::Result<i32> {
@@ -23,13 +24,13 @@ pub fn run_gradle() -> std::io::Result<i32> {
     let mut modules = Vec::new();
     // top of the SCM repository
     let mut scm_repo_root = None;
-    let mut wrapper_dir = None;
+    let mut wrapper_base = None; // the dir containing wrapper script
     let mut wrapper_properties = HashMap::new();
     for d in current_dir.ancestors() {
         if scm_repo_root.is_none() {
             // we only care about these files _within_ scm repo, if one exists
             // ... and also _within_ wrapper, if one exists
-            if wrapper_dir.is_none() {
+            if wrapper_base.is_none() {
                 if d.join("build.gradle").is_file()
                     || d.join("build.gradle.kts").is_file() {
                     modules.push(d);
@@ -40,7 +41,7 @@ pub fn run_gradle() -> std::io::Result<i32> {
                 || d.join("gradlew.bat").is_file()
                 || d.join("gradle/wrapper").is_dir()
             {
-                wrapper_dir = Some(d);
+                wrapper_base = Some(d);
                 log::trace!("WRAPPER: {}", d.display());
             }
             //
@@ -60,23 +61,26 @@ pub fn run_gradle() -> std::io::Result<i32> {
 
     // TODO: consider delegating to the existing wrapper, if it isn't myself
     // estimate gradle version and use it
-    let distribution_url = match wrapper_dir {
-        Some(wrapper_dir) => {
-            let props = wrapper_dir.join("gradle/wrapper/gradle-wrapper.properties");
+    let distribution_url = match wrapper_base {
+        Some(wrapper_base) => {
+            let props = wrapper_base.join("gradle/wrapper/gradle-wrapper.properties");
             if props.exists() {
                 utils::read_properties(&mut wrapper_properties, &props)?;
             }
-            let url = wrapper_properties.get("distributionUrl").expect("cannot find key 'distributionUrl'").clone();
-            if !url.starts_with(GRADLE_DIST_URL_BASE) {
-                log::warn!("Suspicious: this is not our known Gradle distribution location: {url}");
-                // if we ever implement a paranoid mode, this could be a reason to stop
+            let url = wrapper_properties.get("distributionUrl");
+            if let Some(url) = url {
+                if !url.starts_with(GRADLE_DIST_URL_BASE) {
+                    log::warn!("Suspicious: this is not our known Gradle distribution location: {url}");
+                    // if we ever implement a paranoid mode, this could be a reason to stop
+                }
             }
             url
         }
-        None => {
-            // default=latest if not configured otherwise
-            find_latest_gradle_distribution(&user_home)?
-        }
+        None => None
+    };
+    let distribution_url = match distribution_url {
+        None => find_latest_gradle_distribution(&user_home)?, // default=latest if not configured otherwise
+        Some(distribution_url) => distribution_url.clone()
     };
     let gradle_home = get_gradle_home(&user_home, &distribution_url)?;
     log::debug!("Gradle home: {}", gradle_home.display());
