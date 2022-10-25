@@ -1,7 +1,7 @@
 FROM ubuntu:latest
 MAINTAINER pkozelka@gmail.com
 
-RUN apt update && apt install -y git
+RUN apt update && apt install -y git curl
 
 #TODO let's get rid of the need for this, ASAP:
 RUN apt install -y openjdk-8-jdk-headless
@@ -18,9 +18,6 @@ ENV HOME=/root
 RUN git clone --depth=2 https://github.com/pkozelka/contentcheck-maven-plugin.git /root/code
 RUN mkdir -p /root/.m2/repository
 #VOLUME /home/builder/.m2/repository
-
-#TODO move this up^^^
-RUN apt install -y curl
 
 RUN mkdir -p /root/.m2/wrapper/dists .m2/repository /root/bin
 RUN ln -s /root/Downloads/cache/apache-maven-3.8.6-bin /root/.m2/wrapper/dists/apache-maven-3.8.6-bin

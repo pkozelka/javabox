@@ -8,8 +8,8 @@ if test -z "$JAVABOX_VER"; then
   # use `curl` or `wget` to download the wrapper
   if test -x $JAVABOX_BIN; then
     echo "Reusing previous download"
-  elif test -x ; then
-    JAVABOX_BIN=~/root/bin/javabox
+  elif test -x $JAVABOX_BIN; then
+    JAVABOX_BIN=~/bin/javabox
     echo "WARNING: Using $JAVABOX_BIN directly - it should already be on PATH but isn't"
     #TODO: make sure that javabox setup doesn't try copy to itself
   elif command -v wget > /dev/null; then
