@@ -10,7 +10,7 @@ DOCKER_RUN=docker run --init -it --rm --network host \
 	-v ~/Downloads/cache:$(D_HOME)/Downloads/cache \
 	-v $(PROJECT_DIR)/target/debug/javabox:/tmp/javabox \
 	-v $(PROJECT_DIR)/launchers/mvnw:$(D_HOME)/code/mvnw \
-	--mount type=bind,source=/tmp/mvn-repository,target=$(D_HOME)/.m2/repository \
+	--mount type=bind,source=$(HOME)/.m2/repository,target=$(D_HOME)/.m2/repository \
 	test-ccmp
 
 #	-v /tmp/mvn-repository:$(D_HOME)/.m2/repository:rw
