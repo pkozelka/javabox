@@ -13,13 +13,13 @@ if test -z "$JAVABOX_VER"; then
     echo "WARNING: Using $JAVABOX_BIN directly - it should already be on PATH but isn't"
     #TODO: make sure that javabox setup doesn't try copy to itself
   elif command -v wget > /dev/null; then
-    echo "Using wget"
+    echo "Using wget to download $JAVABOX_BIN"
     wget "$JAVABOX_BIN_URL" -O "$JAVABOX_BIN" || exit 1
   elif command -v curl > /dev/null; then
-    echo "Using curl"
+    echo "Using curl to download $JAVABOX_BIN"
     curl "$JAVABOX_BIN_URL" -o "$JAVABOX_BIN" --fail -L || exit 1
   else
-    echo "ERROR: Neither 'curl' nor 'wget' is installed" >&2
+    echo "ERROR: Neither 'curl' nor 'wget' is available" >&2
     exit 1
   fi
   # setup:
@@ -34,7 +34,7 @@ EOF
   source ~/.bashrc
   export PATH=$HOME/bin:$PATH
   echo "PATH now: $PATH"
-  echo "type 'source ~/.bashrc' to make sure your shell has all needed"
+  echo "type 'source ~/.bashrc' to make sure your current shell has all needed configuration"
 fi
 
 exec mvn "$@"

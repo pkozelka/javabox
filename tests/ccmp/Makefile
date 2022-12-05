@@ -8,6 +8,7 @@ D_HOME=/home/builder
 DOCKER_RUN=docker run --init -it --rm --network host \
 	-u $(D_USER):$(D_GROUP) \
 	-v ~/Downloads/cache:$(D_HOME)/Downloads/cache \
+	-v $(PROJECT_DIR)/target/debug/javabox:/tmp/javabox \
 	-v $(PROJECT_DIR)/launchers/mvnw:$(D_HOME)/code/mvnw \
 	--mount type=bind,source=/tmp/mvn-repository,target=$(D_HOME)/.m2/repository \
 	test-ccmp
@@ -19,7 +20,7 @@ DOCKER_RUN=docker run --init -it --rm --network host \
 all:
 
 build:
-	docker build --network host . -t test-ccmp
+	docker build --network host . -t test-ccmp #--no-cache
 
 .PHONY:
 

@@ -8,6 +8,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use dir::home_dir;
+use serde_derive::Deserialize;
 use url::Url;
 
 use crate::{java_hash, utils};
@@ -67,6 +68,7 @@ pub fn run_mvn() -> std::io::Result<i32> {
         Some(wrapper_base) => {
             let props = wrapper_base.join(".mvn/wrapper/maven-wrapper.properties");
             if props.exists() {
+                log::trace!("Reading properties from {}", props.to_string_lossy());
                 utils::read_properties(&mut wrapper_properties, &props)?;
             }
             let url = wrapper_properties.get("distributionUrl");
@@ -116,10 +118,11 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
                 let zip_path = maven_base.join(zip_name);
                 // if the zip is missing, download it first (verify checksums!)
                 if !zip_path.is_file() {
-                    std::fs::create_dir_all(maven_base)?;
+                    let _ = std::fs::create_dir_all(maven_base);
                     download(&distribution_url, &zip_path)?;
                 }
                 let zip = std::fs::File::open(&zip_path)?;
+                log::trace!("Extracting {} to {}", zip_path.to_string_lossy(), maven_home.to_string_lossy());
                 zip_extract::extract(zip, &maven_home, true)
                     .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, format!("Failed to extract file: {} :: {e:?}", zip_path.display())))?;
             }
@@ -129,6 +132,7 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
 }
 
 fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
+    log::trace!("find_latest_maven_distribution");
     let metadata_xml = user_home.join(".m2/wrapper/dists/maven-metadata.xml");
     let url = APACHE_MAVEN_DIST_METADATA_URL;
     let url = Url::from_str(url)
@@ -144,8 +148,6 @@ fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
     log::debug!("Latest Maven release: {}", version);
     Ok(format!("{APACHE_MAVEN_DIST_URL_BASE}/{version}/apache-maven-{version}-bin.zip"))
 }
-
-use serde_derive::Deserialize;
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(rename = "metadata")]
