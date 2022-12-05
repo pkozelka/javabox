@@ -27,9 +27,9 @@ if test -z "$JAVABOX_VER"; then
   # - creates symlinks (somewhere?) on PATH
   chmod +x $JAVABOX_BIN
   $JAVABOX_BIN install || exit 1
+  test -f ~/.bashrc && sed -i '/#added_by_javabox/d' ~/.bashrc
   cat >>~/.bashrc << \EOF
-export PATH=$HOME/bin:$PATH
-echo "PATH: $PATH"
+export PATH=$HOME/bin:$PATH #added_by_javabox
 EOF
   source ~/.bashrc
   export PATH=$HOME/bin:$PATH
