@@ -53,10 +53,10 @@ pub fn run_javabox() -> std::io::Result<i32>{
     // matches just as you would the top level cmd
     match cli.command {
         Commands::Install { bin, force } => {
-            cmd_setup::javabox_install(bin, force)?;
+            cmd_setup::javabox_install(javabox_home(bin), force)?;
         }
         Commands::Uninstall { bin } => {
-            cmd_setup::javabox_uninstall(bin)?;
+            cmd_setup::javabox_uninstall(javabox_home(bin))?;
         }
         Commands::Download {..} => {
             todo!("download")
@@ -66,6 +66,21 @@ pub fn run_javabox() -> std::io::Result<i32>{
         }
     }
     Ok(0)
+}
+
+fn javabox_home(javabox_home: Option<PathBuf>) -> PathBuf {
+    let javabox_home = match javabox_home {
+        None => {
+            let user_home = dir::home_dir().unwrap();
+            user_home.join("bin")
+        }, // TODO probably not very good
+        Some(javabox_home) => javabox_home
+    };
+    if !javabox_home.exists() {
+        log::debug!("creating javabox home directory: {}", javabox_home.display());
+        let _ = std::fs::create_dir_all(&javabox_home);
+    }
+    javabox_home
 }
 
 mod cmd_setup;

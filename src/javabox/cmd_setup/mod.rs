@@ -15,16 +15,11 @@ const ALIASES: [&str;5] = ["mvn", "mvnw", "gradle", "gradlew", "javabox"];
 ///         - _mac_: ?
 ///         - _windows_: ?
 /// - (re)configure symlinks/shortcuts/scripts for running each tool
-pub fn javabox_install(bin: Option<PathBuf>, force_overwrite: bool) -> std::io::Result<()>{
-
-    let bin = match bin {
-        None => dir::home_dir().unwrap().join("bin"), // TODO probably not very good
-        Some(bin) => bin
-    };
+pub fn javabox_install(javabox_home: PathBuf, force_overwrite: bool) -> std::io::Result<()>{
     let javabox = env::current_exe().unwrap();
     log::info!("Creating symlinks for {}", javabox.display());
     for alias in ALIASES {
-        let symlink = bin.join(alias);
+        let symlink = javabox_home.join(alias);
         log::debug!("* {}", symlink.display());
         if symlink.exists() {
             if !force_overwrite {
@@ -40,16 +35,11 @@ pub fn javabox_install(bin: Option<PathBuf>, force_overwrite: bool) -> std::io::
 }
 
 /// Remove any changes performed by [javabox_install]; only javabox itself remains
-pub fn javabox_uninstall(bin: Option<PathBuf>) -> std::io::Result<()>{
-
-    let bin = match bin {
-        None => dir::home_dir().unwrap().join("bin"), // TODO probably not very good
-        Some(bin) => bin
-    };
+pub fn javabox_uninstall(javabox_home: PathBuf) -> std::io::Result<()>{
     let javabox = env::current_exe().unwrap();
     log::info!("Removing symlinks for {}", javabox.display());
     for alias in ALIASES {
-        let symlink = bin.join(alias);
+        let symlink = javabox_home.join(alias);
         log::debug!("* {}", symlink.display());
         if !symlink.exists() {
             log::warn!("File does not exist: {}", symlink.display());
