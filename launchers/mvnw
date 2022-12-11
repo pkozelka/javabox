@@ -25,7 +25,6 @@ if test -z "$JAVABOX_VER"; then
   # setup:
   # - moves itself to a target dir
   # - creates symlinks (somewhere?) on PATH
-  chmod +x $JAVABOX_BIN
   $JAVABOX_BIN install || exit 1
   test -f ~/.bashrc && sed -i '/#added_by_javabox/d' ~/.bashrc
   cat >>~/.bashrc << \EOF

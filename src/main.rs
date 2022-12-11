@@ -1,6 +1,6 @@
 use std::env;
-use log::LevelFilter;
 
+use log::LevelFilter;
 
 fn main() {
     pretty_env_logger::formatted_timed_builder()
