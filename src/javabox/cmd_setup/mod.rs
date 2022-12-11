@@ -18,6 +18,16 @@ const ALIASES: [&str;5] = ["mvn", "mvnw", "gradle", "gradlew", "javabox"];
 pub fn javabox_install(javabox_bin_dir: PathBuf, force_overwrite: bool) -> std::io::Result<()>{
     let javabox_exe = env::current_exe()?;
     log::info!("Creating symlinks for {}", javabox_exe.display());
+
+    #[cfg(target_os = "linux")]
+    {
+        let mut perms = std::fs::metadata(&javabox_exe)?.permissions();
+        use std::os::unix::fs::PermissionsExt;
+        perms.set_mode(0x755);
+    }
+
+    log::info!("Creating symlinks for {}", javabox_exe.display());
+
     for alias in ALIASES {
         let symlink = javabox_bin_dir.join(alias);
         log::debug!("* {}", symlink.display());
