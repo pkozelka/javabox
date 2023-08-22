@@ -53,10 +53,10 @@ pub fn run_javabox() -> std::io::Result<i32>{
     // matches just as you would the top level cmd
     match cli.command {
         Commands::Install { bin, force } => {
-            cmd_setup::javabox_install(javabox_home(bin), force)?;
+            cmd_setup::javabox_install(javabox_bin_dir(bin)?, force)?;
         }
         Commands::Uninstall { bin } => {
-            cmd_setup::javabox_uninstall(javabox_home(bin))?;
+            cmd_setup::javabox_uninstall(javabox_bin_dir(bin)?)?;
         }
         Commands::Download {..} => {
             todo!("download")
@@ -68,19 +68,22 @@ pub fn run_javabox() -> std::io::Result<i32>{
     Ok(0)
 }
 
-fn javabox_home(javabox_home: Option<PathBuf>) -> PathBuf {
-    let javabox_home = match javabox_home {
+fn javabox_bin_dir(bin: Option<PathBuf>) -> std::io::Result<PathBuf> {
+    let bin = match bin {
         None => {
-            let user_home = dir::home_dir().unwrap();
-            user_home.join("bin")
-        }, // TODO probably not very good
+            let current_exe = std::env::current_exe()?;
+            log::debug!("current_exe = {}", current_exe.display());
+            let javabox_exe_dir = current_exe.parent().unwrap();
+            log::debug!("javabox_exe_dir = {}", javabox_exe_dir.display());
+            javabox_exe_dir.to_path_buf()
+        },
         Some(javabox_home) => javabox_home
     };
-    if !javabox_home.exists() {
-        log::debug!("creating javabox home directory: {}", javabox_home.display());
-        let _ = std::fs::create_dir_all(&javabox_home);
+    if !bin.exists() {
+        log::debug!("creating javabox home directory: {}", bin.display());
+        let _ = std::fs::create_dir_all(&bin);
     }
-    javabox_home
+    Ok(bin)
 }
 
 mod cmd_setup;
