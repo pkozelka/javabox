@@ -11,9 +11,10 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// create symlinks to javabox into a directory present in PATH
+    /// create symlinks to javabox
     Install {
-        /// where to create the symlinks - if other than `~/bin/`
+        /// where to create the symlinks
+        #[arg(long)]
         bin: Option<PathBuf>,
         /// overwrite existing symlinks
         #[arg(short, long)]
@@ -21,7 +22,8 @@ enum Commands {
     },
     /// remove symlinks to javabox
     Uninstall {
-        /// where to remove the symlinks - if other than `~/bin/`
+        /// where to remove the symlinks from
+        #[arg(long)]
         bin: Option<PathBuf>,
     },
     /// download java, maven, gradle etc of given version
