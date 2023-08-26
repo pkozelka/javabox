@@ -26,26 +26,6 @@ enum Commands {
         #[arg(long)]
         bin: Option<PathBuf>,
     },
-    /// download java, maven, gradle etc of given version
-    Download {
-        #[arg(value_name = "TOOL")]
-        tool: String,
-        #[arg(value_name = "VERSION")]
-        version: String,
-        /// ensure that the downloaded version is the default for given tool
-        #[arg(short, long)]
-        select: bool
-    },
-    /// select default versions for tools
-    Select {
-        #[arg(value_name = "TOOL")]
-        tool: String,
-        /// for which major version is this the default (if relevant)
-        #[arg(short, long)]
-        major: String,
-        #[arg(value_name = "VERSION")]
-        version: String,
-    },
 }
 
 pub fn run_javabox() -> std::io::Result<i32>{
@@ -59,12 +39,6 @@ pub fn run_javabox() -> std::io::Result<i32>{
         }
         Commands::Uninstall { bin } => {
             cmd_setup::javabox_uninstall(javabox_bin_dir(bin)?)?;
-        }
-        Commands::Download {..} => {
-            todo!("download")
-        }
-        Commands::Select {..} => {
-            todo!("select")
         }
     }
     Ok(0)
