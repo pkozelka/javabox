@@ -10,6 +10,9 @@ mklinks:
 install:
 	cargo install --path .
 
+install-debug:
+	ln -sf $(PWD)/target/debug/javabox $(shell which javabox)
+
 init-dist:
 	echo $(R_VERSION)
 	rm -rf "target/dist"
