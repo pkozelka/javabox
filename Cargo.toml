@@ -23,6 +23,7 @@ serde_json = "1.0.85"
 rust-crypto = "0.2.36"
 bigdecimal = "0.4.1"
 indicatif = "0.17.1"
+confy = "0.5.1"
 
 [profile.release]
 opt-level = 'z' # Optimize for size

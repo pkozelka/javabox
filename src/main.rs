@@ -20,13 +20,13 @@ fn main() -> anyhow::Result<()> {
     // println!("executable name is '{exe}'");
     let exit_code = match exe {
         "mvnw" |
-        "mvn" => mvn::run_mvn(),
+        "mvn" => mvn::run_mvn()?,
         "gradlew" |
-        "gradle" => gradle::run_gradle(),
+        "gradle" => gradle::run_gradle()?,
         "javabox.exe" |
-        "javabox" => javabox::run_javabox(),
+        "javabox" => javabox::run_javabox()?,
         _ => panic!("Unsupported alias name: {exe}")
-    }?;
+    };
     if exit_code != 0 {
         log::error!("Returning with exit code {exit_code}");
         std::process::exit(exit_code);
@@ -39,3 +39,5 @@ mod gradle;
 mod javabox;
 mod utils;
 mod java_hash;
+
+mod config;
