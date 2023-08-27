@@ -1,5 +1,6 @@
 use std::path::Path;
-use serde_derive::{Serialize, Deserialize};
+
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct JavaboxConfig {
@@ -16,6 +17,7 @@ pub struct JavaConfig {
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct MavenConfig {
     pub version: String,
+    pub download_url: String,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]
@@ -26,8 +28,14 @@ pub struct GradleConfig {
 const CONFIG_NAME: &'static str = "javabox.toml";
 
 impl JavaboxConfig {
-    pub fn load() -> anyhow::Result<Self> {
-        let config: JavaboxConfig = confy::load_path(CONFIG_NAME)?;
+    pub(crate) fn is_inside(dir: &Path) -> bool {
+        dir.join(CONFIG_NAME).is_file()
+    }
+
+    pub fn load(dir: &Path) -> anyhow::Result<Self> {
+        let config_file = dir.join(CONFIG_NAME);
+        log::trace!("JavaboxConfig::load({})", config_file.display());
+        let config: JavaboxConfig = confy::load_path(config_file)?;
         Ok(config)
     }
 
