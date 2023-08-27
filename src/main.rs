@@ -20,7 +20,7 @@ fn main() -> anyhow::Result<()> {
     // println!("executable name is '{exe}'");
     let exit_code = match exe {
         "mvnw" |
-        "mvn" => mvn::run_mvn()?,
+        "mvn" => mvn::run_mvn_here()?,
         "gradlew" |
         "gradle" => gradle::run_gradle()?,
         "javabox.exe" |

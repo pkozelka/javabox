@@ -31,6 +31,7 @@ pub fn execute_tool(project: &Path, tool: &str, module: &Path) -> std::io::Resul
 /// Lines in form `KEY=VALUE` are read.
 /// Other lines are reported to stderr.
 pub fn read_properties(properties: &mut HashMap<String,String>, path: &Path) -> std::io::Result<()> {
+    log::trace!("read_properties({})", path.display());
     let text = std::fs::read_to_string(path)?;
     for line in text.lines() {
         let line = line.trim();

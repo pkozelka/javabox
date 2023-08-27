@@ -55,9 +55,11 @@ pub fn run_javabox() -> anyhow::Result<i32> {
 }
 
 fn infer_config(dir: &Path) -> anyhow::Result<JavaboxConfig> {
+    log::debug!("infer");
     let maven = if dir.join("pom.xml").exists() {
         Some(MavenConfig {
-            version: "3.9.3".to_string()
+            version: "3.9.3".to_string(),
+            download_url: "todo".parse()?,
         })
     } else {
         None

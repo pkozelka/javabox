@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::env::current_dir;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -12,89 +13,21 @@ use serde_derive::Deserialize;
 use url::Url;
 
 use crate::{java_hash, utils};
+use crate::config::{JavaboxConfig, JavaConfig, MavenConfig};
 use crate::utils::{download, download_or_reuse};
 
-const APACHE_MAVEN_DIST_URL_BASE: &str     = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven";
+const APACHE_MAVEN_DIST_URL_BASE: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven";
 const APACHE_MAVEN_DIST_METADATA_URL: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
 
-pub fn run_mvn() -> std::io::Result<i32> {
-    let current_dir = current_dir()?;
-    let user_home = home_dir().expect("There is no HOME directory?!");
-    // all ancestors containing modules
-    let mut modules = Vec::new();
-    // top of the SCM repository
-    let mut scm_repo_root = None;
-    let mut wrapper_base = None; // the dir containing wrapper script
-    let mut wrapper_properties = HashMap::new();
-    for d in current_dir.ancestors() {
-        if scm_repo_root.is_none() {
-            // we only care about these files _within_ scm repo, if one exists
-            // ... and also _within_ wrapper, if one exists
-            if wrapper_base.is_none() && d.join("pom.xml").is_file() {
-                modules.push(d);
-                log::trace!("POM: {}", d.display());
-            }
-            if d.join("mvnw").is_file()
-                || d.join("mvnw.bat").is_file()
-                || d.join(".mvn").is_dir()
-            {
-                wrapper_base = Some(d);
-                log::trace!("WRAPPER: {}", d.display());
-            }
-            //
-        }
-        if utils::is_scm_wc_root(d) {
-            scm_repo_root = Some(d);
-            log::trace!("SCM WORKING COPY: {}", d.display());
-        }
+pub fn run_mvn_here() -> anyhow::Result<i32> {
+    run_mvn(&current_dir()?)
+}
 
-        //TODO: think about detecting
-        // - .repository/ and .m2/repository/ ... can be passed to maven with -Dmaven.repository.local=XXX
-        // - settings.xml and .m2/settings.xml ... can be passed to maven with --settings
-        // - .m2/
-
-        // stop scan at user home level
-        if d == user_home {
-            break;
-        }
-    }
-
-    // TODO: estimate JDK version and use it as JAVA_HOME and in PATH
-
-    // TODO: consider delegating to the existing wrapper, if it isn't myself
-    // TODO: when on a nested module, we should perhaps go from project root and add options `-pl` with rel module and one of (`--also-make`, `--also-make-dependents`)
-    // estimate maven version and use it
-    let distribution_url = match wrapper_base {
-        Some(wrapper_base) => {
-            let props = wrapper_base.join(".mvn/wrapper/maven-wrapper.properties");
-            if props.exists() {
-                log::trace!("Reading properties from {}", props.to_string_lossy());
-                utils::read_properties(&mut wrapper_properties, &props)?;
-            }
-            let url = wrapper_properties.get("distributionUrl");
-            if let Some(url) = url {
-                if !url.starts_with(APACHE_MAVEN_DIST_URL_BASE) {
-                    log::warn!("Suspicious: this is not our known Apache Maven distribution location: {url}");
-                    // if we ever implement a paranoid mode, this could be a reason to stop
-                }
-            }
-            url
-        }
-        None => None
-    };
-    let distribution_url = match distribution_url {
-        Some(distribution_url) => distribution_url.clone(),
-        None => find_latest_maven_distribution(&user_home)? // default=latest if not configured otherwise
-    };
-    let maven_home = get_maven_home(&user_home, &distribution_url)?;
-    log::debug!("Maven home: {}", maven_home.display());
-    let launcher = maven_home.join("bin/mvn");
-
-    let current_dir = current_dir.as_path(); // for use outside existing modules
-    let project_dir = *modules.last().unwrap_or(&current_dir);
-    let module_dir = *modules.first().unwrap_or(&current_dir);
-
-    utils::execute_tool(&project_dir, &launcher.display().to_string(), &module_dir)
+pub fn run_mvn(cwd: &Path) -> anyhow::Result<i32> {
+    log::trace!("run_mvn({})", cwd.display());
+    let mvn_env = MavenEnv::load_or_infer(cwd)?;
+    let exit_code = mvn_env.execute(cwd)?;
+    Ok(exit_code)
 }
 
 fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Result<PathBuf> {
@@ -126,12 +59,13 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
                 zip_extract::extract(zip, &maven_home, true)
                     .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, format!("Failed to extract file: {} :: {e:?}", zip_path.display())))?;
             }
+            log::debug!("maven_home={}", maven_home.display());
             Ok(maven_home)
         }
     }
 }
 
-fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
+fn find_latest_maven_version(user_home: &Path) -> std::io::Result<String> {
     log::trace!("find_latest_maven_distribution");
     let metadata_xml = user_home.join(".m2/wrapper/dists/maven-metadata.xml");
     let url = APACHE_MAVEN_DIST_METADATA_URL;
@@ -146,7 +80,7 @@ fn find_latest_maven_distribution(user_home: &Path) -> std::io::Result<String> {
         .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
     let version = &meta.versioning.latest;
     log::debug!("Latest Maven release: {}", version);
-    Ok(format!("{APACHE_MAVEN_DIST_URL_BASE}/{version}/apache-maven-{version}-bin.zip"))
+    Ok(version.to_owned())
 }
 
 #[derive(Debug, Deserialize, PartialEq)]
@@ -163,4 +97,97 @@ struct MetadataVersioning {
     latest: String,
     release: String,
     // versions: Vec<String>
+}
+
+
+struct MavenEnv {
+    maven_bin: PathBuf,
+    java_home: PathBuf,
+    //TODO env, properties etc
+}
+
+impl MavenEnv {
+    /// Finds directory with root pom.xml file
+    pub fn load_or_infer(cwd: &Path) -> anyhow::Result<MavenEnv> {
+        let user_home = home_dir().unwrap();
+        let config = if JavaboxConfig::is_inside(cwd) {
+            JavaboxConfig::load(cwd)?
+        } else {
+            let mut props = HashMap::new();
+            let mwp = cwd.join(".mvn/wrapper/maven-wrapper.properties");
+            if mwp.is_file() {
+                utils::read_properties(&mut props, &mwp)?;
+            }
+            // config was not yet persisted
+            let pom = cwd.join("pom.xml");
+            if !pom.exists() {
+                anyhow::bail!("No pom.xml file in {}", cwd.display());
+            }
+            // maven version: from wrapper or default
+            let maven_version = maven_version_from_wrapper(props)
+                .unwrap_or_else(|| find_latest_maven_version(&user_home).unwrap());
+            let download_url = format!("{APACHE_MAVEN_DIST_URL_BASE}/{maven_version}/apache-maven-{maven_version}-bin.zip").parse()?;
+            let maven = MavenConfig {
+                version: maven_version.to_string(),
+                download_url,
+            };
+            let java_version = "1.8".to_string();
+            JavaboxConfig {
+                java: Some(JavaConfig { version: java_version }),
+                maven: Some(maven),
+                gradle: None,
+            }
+        };
+        let maven = config.maven.as_ref().unwrap();
+        // maven_version -> distributionUrl
+        // maven_version -> MAVEN_HOME
+
+        let maven_home = get_maven_home(&user_home, &maven.download_url)?;
+
+        // determine maven_home directory based on maven_version and customizations
+        // if empty:
+        // - download maven if not downloaded yet
+        // - expand downloaded to maven_home
+
+        // download java if needed, pass it to JAVA_HOME and PATH
+        // maybe other required tooling
+        Ok(MavenEnv {
+            maven_bin: maven_home.join("bin/mvn"),
+            java_home: Default::default(),
+        })
+    }
+
+    pub fn execute(&self, cwd: &Path) -> std::io::Result<i32> {
+        log::info!("Running {} in project {}", self.maven_bin.display(), cwd.display());
+
+        let mut command = std::process::Command::new(&self.maven_bin);
+        command.current_dir(cwd);
+        command.args(std::env::args().skip(1));
+        command.stdout(Stdio::inherit());
+        command.stderr(Stdio::inherit());
+        command.env("JAVA_HOME", self.java_home.display().to_string());
+        let status = command.status()?;
+        match status.code() {
+            None => Err(std::io::Error::new(ErrorKind::BrokenPipe, "Interrupted")),
+            Some(code) => Ok(code)
+        }
+    }
+}
+
+fn maven_version_from_wrapper<'a>(props: HashMap<String, String>) -> Option<String> {
+    match props.get("distributionUrl") {
+        None => None,
+        Some(dist) => {
+            log::warn!("dist={dist}");
+            match dist[APACHE_MAVEN_DIST_URL_BASE.len()+1..].split('/')
+                // .skip(1)
+                .next() {
+                None => None,
+                Some(version) => {
+                    log::debug!("{dist} --> '{version}'");
+                    Some(version.to_string())
+                }
+            }
+        }
+    }
 }
