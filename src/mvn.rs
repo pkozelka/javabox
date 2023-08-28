@@ -6,18 +6,13 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::str::FromStr;
-use std::time::Duration;
-
 use dir::home_dir;
-use serde_derive::Deserialize;
 use url::Url;
 
 use crate::{java_hash, utils};
 use crate::config::{JavaboxConfig, JavaConfig, MavenConfig};
-use crate::utils::{download, download_or_reuse};
-
-const APACHE_MAVEN_DIST_URL_BASE: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven";
-const APACHE_MAVEN_DIST_METADATA_URL: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
+use crate::mvn::centralrepo::APACHE_MAVEN_DIST_URL_BASE;
+use crate::utils::download;
 
 pub fn run_mvn_here() -> anyhow::Result<i32> {
     run_mvn(&current_dir()?)
@@ -65,41 +60,6 @@ fn get_maven_home(user_home: &Path, distribution_url: &String) -> std::io::Resul
     }
 }
 
-fn find_latest_maven_version(user_home: &Path) -> std::io::Result<String> {
-    log::trace!("find_latest_maven_distribution");
-    let metadata_xml = user_home.join(".m2/wrapper/dists/maven-metadata.xml");
-    let url = APACHE_MAVEN_DIST_METADATA_URL;
-    let url = Url::from_str(url)
-        .map_err(|e| std::io::Error::new(ErrorKind::InvalidInput, format!("Failed to download maven-matadata.xml: {} :: {e:?}", url)))?;
-    // reuse the file for some time, they don't release maven every hour
-    // one day should be good enough
-    download_or_reuse(&url, &metadata_xml, Duration::from_secs(3600 * 24))?;
-    // extract the latest version
-    let meta = std::fs::File::open(&metadata_xml)?;
-    let meta: MavenMetadataXml = serde_xml_rs::from_reader(meta)
-        .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
-    let version = &meta.versioning.latest;
-    log::debug!("Latest Maven release: {}", version);
-    Ok(version.to_owned())
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-#[serde(rename = "metadata")]
-#[serde(rename_all = "camelCase")]
-struct MavenMetadataXml {
-    group_id: String,
-    artifact_id: String,
-    versioning: MetadataVersioning,
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-struct MetadataVersioning {
-    latest: String,
-    release: String,
-    // versions: Vec<String>
-}
-
-
 struct MavenEnv {
     maven_bin: PathBuf,
     java_home: PathBuf,
@@ -125,7 +85,7 @@ impl MavenEnv {
             }
             // maven version: from wrapper or default
             let maven_version = maven_version_from_wrapper(props)
-                .unwrap_or_else(|| find_latest_maven_version(&user_home).unwrap());
+                .unwrap_or_else(|| centralrepo::find_latest_maven_version(&user_home).unwrap());
             let download_url = format!("{APACHE_MAVEN_DIST_URL_BASE}/{maven_version}/apache-maven-{maven_version}-bin.zip").parse()?;
             let maven = MavenConfig {
                 version: maven_version.to_string(),
@@ -191,3 +151,5 @@ fn maven_version_from_wrapper<'a>(props: HashMap<String, String>) -> Option<Stri
         }
     }
 }
+
+mod centralrepo;
