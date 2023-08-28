@@ -5,10 +5,11 @@ use log::LevelFilter;
 fn main() -> anyhow::Result<()> {
     pretty_env_logger::formatted_timed_builder()
         .format_timestamp_millis()
-        .filter_level(LevelFilter::Trace)
+        .filter_level(LevelFilter::Warn)
         .filter_module("serde_xml_rs", LevelFilter::Info)
         .filter_module("rustls", LevelFilter::Info)
         .filter_module("zip_extract", LevelFilter::Debug)
+        .parse_env("JAVABOX_LOG")
         .init();
 
     let exe = env::args().next().unwrap();
