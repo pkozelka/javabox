@@ -8,6 +8,7 @@ use std::time::Duration;
 use dir::home_dir;
 use serde_derive::Deserialize;
 use url::Url;
+use crate::config::{GradleConfig, JavaboxConfig, JavaConfig};
 use crate::utils;
 
 use crate::utils::{download, download_or_reuse};
@@ -141,6 +142,22 @@ fn find_latest_gradle_distribution(user_home: &Path) -> std::io::Result<String> 
     log::debug!("Latest(Current) Gradle release: {} distribution: {}", current_gradle.version, current_gradle.download_url);
     // format!("{GRADLE_DIST_URL_BASE}/gradle-{version}-bin.zip")
     Ok(current_gradle.download_url)
+}
+
+pub fn infer_config(_cwd: &Path) -> anyhow::Result<JavaboxConfig> {
+    log::debug!("infer gradle configuration");
+    //TODO: implement more sophisticated/precise detection
+    let gradle = Some(GradleConfig {
+        version: "8.3".to_string()
+    });
+    let java = Some(JavaConfig {
+        version: "8".to_string(),
+    });
+    Ok(JavaboxConfig {
+        java,
+        gradle,
+        ..Default::default()
+    })
 }
 
 #[derive(Debug, Deserialize, PartialEq)]

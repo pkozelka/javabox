@@ -1,7 +1,8 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use crate::config::{GradleConfig, JavaboxConfig, JavaConfig, MavenConfig};
+
+use crate::{gradle, mvn};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, bin_name = "javabox")]
@@ -47,42 +48,18 @@ pub fn run_javabox() -> anyhow::Result<i32> {
             cmd_setup::javabox_uninstall(javabox_bin_dir(bin)?)?;
         }
         Commands::InferConfig { dir } => {
-            let config = infer_config(&dir)?;
-            config.save(&dir)?;
+            if dir.join("pom.xml").is_file() {
+                let config = mvn::infer_config(&dir)?;
+                config.save(&dir)?;
+            } else if dir.join("build.gradle").is_file() {
+                let config = gradle::infer_config(&dir)?;
+                config.save(&dir)?;
+            } else {
+                anyhow::bail!("Failed to detect java project files here, cannot infer configuration");
+            }
         }
     }
     Ok(0)
-}
-
-fn infer_config(dir: &Path) -> anyhow::Result<JavaboxConfig> {
-    log::debug!("infer");
-    let maven = if dir.join("pom.xml").exists() {
-        Some(MavenConfig {
-            version: "3.9.3".to_string(),
-            download_url: "todo".parse()?,
-        })
-    } else {
-        None
-    };
-    let gradle = if dir.join("build.gradle").exists() {
-        Some(GradleConfig {
-            version: "8.3".to_string()
-        })
-    } else {
-        None
-    };
-    let java = if maven.is_some() || gradle.is_some() {
-        Some(JavaConfig {
-            version: "8".to_string(),
-        })
-    } else {
-        None
-    };
-    Ok(JavaboxConfig {
-        java,
-        maven,
-        gradle,
-    })
 }
 
 fn javabox_bin_dir(bin: Option<PathBuf>) -> std::io::Result<PathBuf> {

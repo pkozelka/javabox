@@ -73,30 +73,7 @@ impl MavenEnv {
         let config = if JavaboxConfig::is_inside(cwd) {
             JavaboxConfig::load(cwd)?
         } else {
-            let mut props = HashMap::new();
-            let mwp = cwd.join(".mvn/wrapper/maven-wrapper.properties");
-            if mwp.is_file() {
-                utils::read_properties(&mut props, &mwp)?;
-            }
-            // config was not yet persisted
-            let pom = cwd.join("pom.xml");
-            if !pom.exists() {
-                anyhow::bail!("No pom.xml file in {}", cwd.display());
-            }
-            // maven version: from wrapper or default
-            let maven_version = maven_version_from_wrapper(props)
-                .unwrap_or_else(|| centralrepo::find_latest_maven_version(&user_home).unwrap());
-            let download_url = format!("{APACHE_MAVEN_DIST_URL_BASE}/{maven_version}/apache-maven-{maven_version}-bin.zip").parse()?;
-            let maven = MavenConfig {
-                version: maven_version.to_string(),
-                download_url,
-            };
-            let java_version = "1.8".to_string();
-            JavaboxConfig {
-                java: Some(JavaConfig { version: java_version }),
-                maven: Some(maven),
-                gradle: None,
-            }
+            infer_config(cwd)?
         };
         let maven = config.maven.as_ref().unwrap();
         // maven_version -> distributionUrl
@@ -132,6 +109,36 @@ impl MavenEnv {
             Some(code) => Ok(code)
         }
     }
+}
+
+pub fn infer_config(cwd: &Path) -> anyhow::Result<JavaboxConfig> {
+    let mut props = HashMap::new();
+    let mwp = cwd.join(".mvn/wrapper/maven-wrapper.properties");
+    if mwp.is_file() {
+        utils::read_properties(&mut props, &mwp)?;
+    }
+    // config was not yet persisted
+    let pom = cwd.join("pom.xml");
+    if !pom.exists() {
+        anyhow::bail!("No pom.xml file in {}", cwd.display());
+    }
+    // maven version: from wrapper or default
+    // TODO: consider reading properties and compiler plugin config from pom.xml
+    let maven_version = match maven_version_from_wrapper(props) {
+        None => centralrepo::find_latest_maven_version()?,
+        Some(maven_version) => maven_version
+    };
+    let download_url = format!("{APACHE_MAVEN_DIST_URL_BASE}/{maven_version}/apache-maven-{maven_version}-bin.zip").parse()?;
+    let maven = MavenConfig {
+        version: maven_version.to_string(),
+        download_url,
+    };
+    let java_version = "1.8".to_string();
+    Ok(JavaboxConfig {
+        java: Some(JavaConfig { version: java_version }),
+        maven: Some(maven),
+        ..Default::default()
+    })
 }
 
 fn maven_version_from_wrapper<'a>(props: HashMap<String, String>) -> Option<String> {
