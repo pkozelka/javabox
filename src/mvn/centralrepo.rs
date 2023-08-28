@@ -10,11 +10,14 @@ use crate::utils::download_or_reuse;
 pub const APACHE_MAVEN_DIST_URL_BASE: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven";
 const APACHE_MAVEN_DIST_METADATA_URL: &str = "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/maven-metadata.xml";
 
-pub fn find_latest_maven_version() -> std::io::Result<String> {
+pub fn maven_last_stable_version() -> std::io::Result<String> {
     log::trace!("find_latest_maven_distribution");
     let metadata_xml = load_known_versions()?;
-    let version = &metadata_xml.versioning.latest;
-    log::debug!("Latest Maven release: {}", version);
+    let version = metadata_xml.versioning.versions.version.iter()
+        .filter(|v|!(v.contains("-alpha") || v.contains("-beta")))
+        .last()
+        .expect("No stable version available");
+    log::debug!("Last stable Maven release: {}", version);
     Ok(version.to_owned())
 }
 
@@ -31,6 +34,9 @@ fn load_known_versions() -> std::io::Result<MavenMetadataXml> {
     let meta = std::fs::File::open(&metadata_xml)?;
     let meta: MavenMetadataXml = serde_xml_rs::from_reader(meta)
         .map_err(|e| std::io::Error::new(ErrorKind::InvalidData, format!("Invalid format of maven-matadata.xml :: {e:?}")))?;
+    for version in &meta.versioning.versions.version {
+        log::trace!("* {version}");
+    }
     Ok(meta)
 }
 
@@ -47,5 +53,10 @@ struct MavenMetadataXml {
 struct MetadataVersioning {
     latest: String,
     release: String,
-    // versions: Vec<String>
+    versions: MetadataVersions,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+struct MetadataVersions {
+    version: Vec<String>
 }

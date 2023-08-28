@@ -125,7 +125,7 @@ pub fn infer_config(cwd: &Path) -> anyhow::Result<JavaboxConfig> {
     // maven version: from wrapper or default
     // TODO: consider reading properties and compiler plugin config from pom.xml
     let maven_version = match maven_version_from_wrapper(props) {
-        None => centralrepo::find_latest_maven_version()?,
+        None => centralrepo::maven_last_stable_version()?,
         Some(maven_version) => maven_version
     };
     let download_url = format!("{APACHE_MAVEN_DIST_URL_BASE}/{maven_version}/apache-maven-{maven_version}-bin.zip").parse()?;
