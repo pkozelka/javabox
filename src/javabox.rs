@@ -33,6 +33,10 @@ enum Commands {
         #[arg(long, default_value = ".")]
         dir: PathBuf,
     },
+    Adoptium {
+        #[arg(short,long)]
+        version: String,
+    },
 }
 
 pub fn run_javabox() -> anyhow::Result<i32> {
@@ -58,6 +62,9 @@ pub fn run_javabox() -> anyhow::Result<i32> {
                 anyhow::bail!("Failed to detect java project files here, cannot infer configuration");
             }
         }
+        Commands::Adoptium { version} => {
+            cmd_adoptium::download_jdk(&version)?;
+        }
     }
     Ok(0)
 }
@@ -80,4 +87,5 @@ fn javabox_bin_dir(bin: Option<PathBuf>) -> std::io::Result<PathBuf> {
     Ok(bin)
 }
 
+mod cmd_adoptium;
 mod cmd_setup;
